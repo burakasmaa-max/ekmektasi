@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Dinleme Sınavı</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; text-align: center; margin-bottom: 5px; }
+        .sub-title { text-align: center; color: #7f8c8d; margin-bottom: 20px; font-size: 14px; }
+
+        /* Medya Kutusu */
+        .media-control-panel {
+            background-color: #e9ecef; padding: 20px; border-radius: 10px;
+            border: 1px solid #ced4da; margin-bottom: 20px; text-align: center;
+        }
+
+        /* --- ORTAK OYNATICI ARAYÜZÜ --- */
+        .player-interface {
+            display: block; /* Her zaman görünür (JS ile yönetilir) */
+        }
+
+        .rights-info {
+            background-color: #fff; display: inline-block; padding: 5px 15px;
+            border-radius: 20px; font-size: 13px; font-weight: bold; color: #e67e22;
+            margin-bottom: 15px; border: 1px solid #e67e22;
+        }
+
+        .progress-container {
+            width: 100%; max-width: 400px; margin: 0 auto 15px auto; background: #ccc;
+            height: 6px; border-radius: 5px; cursor: pointer; position: relative;
+        }
+        .progress-bar {
+            height: 100%; background-color: #3498db; width: 0%; border-radius: 5px; transition: width 0.1s linear;
+        }
+
+        .custom-player-controls {
+            display: flex; align-items: center; justify-content: center; gap: 20px;
+        }
+
+        .ctrl-btn {
+            width: 55px; height: 55px; border-radius: 50%; border: none; cursor: pointer;
+            font-size: 24px; color: white; background-color: #3498db;
+            display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .ctrl-btn:hover { transform: scale(1.05); background-color: #2980b9; }
+        .ctrl-btn:active { transform: scale(0.95); }
+        .ctrl-btn.pause { background-color: #e74c3c; display: none; }
+        .ctrl-btn.disabled { background-color: #95a5a6; cursor: not-allowed; pointer-events: none; }
+
+        /* Gizli Elemanlar */
+        #youtube-frame-wrapper { position: absolute; top: -9999px; left: -9999px; width: 1px; height: 1px; visibility: hidden; pointer-events: none; }
+        #native-audio-element { display: none; } /* Native player gizli, custom arayüz yönetecek */
+
+        /* Soru Alanları */
+        .section-title { background-color: #2c3e50; color: white; padding: 10px; border-radius: 5px; margin-bottom: 20px; font-size: 18px; font-weight: bold; }
+        .question-box { margin-bottom: 20px; border-bottom: 1px dashed #ccc; padding-bottom: 15px; }
+        .question-text { font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #34495e; }
+        .options { display: grid; gap: 8px; }
+        .btn { padding: 10px; font-size: 15px; cursor: pointer; border: 1px solid #ddd; border-radius: 6px; background-color: white; text-align: left; transition: all 0.2s; }
+        .btn:hover { background-color: #f8f9fa; border-color: #bbb; }
+        .selected-opt { background-color: #e3f2fd; border-color: #2196f3; color: #0d47a1; font-weight: 500; }
+        .disabled { pointer-events: none; opacity: 0.7; }
+
+        /* Butonlar */
+        .nav-btn { display: block; width: 100%; padding: 15px; font-size: 18px; border: none; border-radius: 8px; cursor: pointer; margin-top: 20px; font-weight: bold; color: white; }
+        .next-btn { background-color: #f39c12; }
+        .finish-btn { background-color: #27ae60; }
+
+        /* Giriş ve Modal */
+        #login-screen { text-align: center; padding: 50px 20px; }
+        #student-name { padding: 15px; font-size: 16px; width: 80%; border: 2px solid #3498db; border-radius: 8px; }
+        #start-btn { margin-top: 15px; background-color: #3498db; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 18px; cursor: pointer; }
+        #result-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 30px; border-radius: 10px; width: 90%; max-width: 400px; text-align: center; position: relative; }
+        .big-score { font-size: 40px; font-weight: bold; color: #e74c3c; margin: 10px 0; }
+        .close-btn { position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; }
+        .loader { border: 5px solid #f3f3f3; border-top: 5px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 2s linear infinite; margin: 0 auto; display: none; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .hidden { display: none; }
+    </style>
+    <script src="https://www.youtube.com/iframe_api"></script>
+</head>
+<body>
+
+<div class="container" id="login-screen">
+    <h1>🎧 Dinleme Sınavı</h1>
+    <p>Sınava başlamak için adınızı giriniz.</p>
+    <input type="text" id="student-name" placeholder="Adınız Soyadınız">
+    <button id="start-btn" onclick="startQuiz()">Sınava Başla</button>
+</div>
+
+<div class="container hidden" id="quiz-content">
+    <h1>Dinamik Dinleme Sınavı</h1>
+    <div class="sub-title" id="progress-text">Bölüm 1 / 3</div>
+
+    <div class="media-control-panel">
+        <div class="rights-info" id="rights-display">Kalan Dinleme Hakkı: 2</div>
+        <p style="font-weight:bold; margin-bottom:15px; color:#555;">Dinleme Metni / Videosu</p>
+        
+        <div class="player-interface">
+            <div class="progress-container" onclick="seekAudio(event)">
+                <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            
+            <div class="custom-player-controls">
+                <button class="ctrl-btn play" id="btn-play" onclick="handlePlay()">▶</button>
+                <button class="ctrl-btn pause" id="btn-pause" onclick="handlePause()">⏸</button>
+            </div>
+            <div style="margin-top:8px; font-size:12px; color:#666;" id="time-display">0:00 / 0:00</div>
+        </div>
+
+        <div id="youtube-frame-wrapper"><div id="yt-player"></div></div>
+        <div id="native-player-container"></div>
+    </div>
+
+    <div id="section-questions-container"></div>
+
+    <button id="next-section-btn" class="nav-btn next-btn" onclick="nextSection()">Sonraki Bölüm ➡️</button>
+    <button id="finish-exam-btn" class="nav-btn finish-btn hidden" onclick="finishExam()">Sınavı Bitir ve Gönder ✅</button>
+</div>
+
+<div id="result-modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeModal()">×</span>
+        <h2>Sınav Sonucu</h2>
+        <p>Toplam Doğru Sayısı:</p>
+        <div class="big-score" id="final-score">0</div>
+        <div class="loader" id="loader"></div>
+        <div id="google-response-msg" style="margin-top:10px; font-size:14px; color:#555;"></div>
+        <p id="result-msg" style="margin-top:10px;"></p>
+    </div>
+</div>
+
+<script>
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyOSgkLuK5DDkkRavqJR9mUCVytU-ENERAN9Snoi_9zeBoe5CYHwwxV3YWCR5fV_4v9/exec";
+
+    const quizData = [
+        {
+            sectionTitle: "Bölüm 1: Ekmek Taşı",
+            mediaUrl: "https://www.youtube.com/shorts/XOSgC_fXC98", 
+            mediaType: "audio", 
+            questions: [
+                { q: "1. Bartın'da kaç tane ekmek taşı ustası vardır?", options: ["İki", "Üç", "Dört", "Beş"], answer: 3 },
+                { q: "2. Ekmek taşı çıkarmak isteyen bir kişi hangi coğrafi bölgeye gitmelidir?", options: ["Akdeniz", "Marmara", "Doğu Anadolu", "Karadeniz"], answer: 3 },
+                { q: "3. Ekmek taşının bileşimi nasıldır?", options: ["%50 kil, %50 cam", "%40 kil, %60 cam", "%60 kil, %40 cam", "%30 kil, %70 cam"], answer: 2 },
+                { q: "4. Madenden çıkarılacak taşa kaç adet çivi çakılmaktadır?", options: ["5 adet", "6 adet", "7 adet", "8 adet"], answer: 3 },
+                { q: "5. Taş madenden çıkarıldıktan sonra şekil verme işlemi hangi araçlarla yapılır?", options: ["Pergel ve kazma ile", "Pergel ve balta ile", "Balta ve testere ile", "Kazma ve testere ile"], answer: 2 },
+                { q: "6. Ekmek taşının en önemli özelliği nedir?", options: ["Çok hafif olması", "Kolay işlenebilmesi", "Isıyı belli oranda tutması", "Uzun yıllar bozulmadan kalması"], answer: 3 }
+            ]
+        },
+        {
+            sectionTitle: "Bölüm 2: Mendiller neden kare şeklindedir?",
+            mediaUrl: "https://www.youtube.com/watch?v=6rAk_nWefls",
+            mediaType: "audio", 
+            questions: [
+                { q: "Mendiller ilk başta ne amaçla tasarlanmamıştı?", options: ["Burnumuzu sümkürmek için", "Statü göstergesi olarak kullanmak için", "Vedalaşırken sallamak için", "Masa örtüsü olarak kullanmak için"], answer: 1 },
+                { q: "Eski zamanlarda asiller burnu silme işini nasıl yapardı?", options: ["Kollarına sürerek", "Masa örtüsüne silerek", "Sadece ellerini kullanarak", "Zıplayarak"], answer: 3 },
+                { q: "Saray çevrelerinde gelişen mendil diline göre camdan sarkıtılan mendil ne anlama geliyordu?", options: ["Seninle görüşmek istiyorum", "Sana sadık kalacağım", "Dikkat et, gözetim altındayım", "Benim kalbim başkasına ait"], answer: 3 },
+                { q: "Mendillerin eninin boyunun eşit olmasını sağlayan kararname kimin tarafından yayımlandı?", options: ["Marie Antoinette", "16. Louis", "Fransız Devrimi liderleri", "Asiller"], answer: 2 },
+                { q: "Kağıt mendiller hangi yıldan itibaren üretilmeye başlandı?", options: ["1909", "1919", "1929", "1939"], answer: 3 },
+                { q: "Metne göre mendillerin kare şeklinde kalmasının asıl nedeni nedir?", options: ["Üretim kolaylığı sağlaması", "Daha kolay katlanabilmesi", "Bir kraliçenin beğenisi ve çıkarılan kararname", "Fransız Devrimi sonrası demokratikleşme"], answer: 3 }
+            ]
+        },
+        {
+            sectionTitle: "Bölüm 3: Röportaj",
+            mediaUrl: "roportaj.mp3",
+            mediaType: "audio",
+            questions: [
+                { q: "1. Konuşmacının mesleği nedir?", options: ["Doktor", "Mühendis", "Öğretmen", "Pilot"], answer: 2 },
+                { q: "2. Soru...", options: ["A", "B", "C", "D"], answer: 0 },
+                { q: "3. Soru...", options: ["A", "B", "C", "D"], answer: 0 },
+                { q: "4. Soru...", options: ["A", "B", "C", "D"], answer: 0 },
+                { q: "5. Soru...", options: ["A", "B", "C", "D"], answer: 0 },
+                { q: "6. Soru...", options: ["A", "B", "C", "D"], answer: 0 }
+            ]
+        }
+    ];
+
+    let currentSectionIndex = 0;
+    let studentName = "";
+    let userAnswers = {}; 
+    let ytPlayer = null; 
+    let progressInterval = null;
+    let isYoutube = false;
+    
+    // YENİ: DİNLEME HAKKI DEĞİŞKENLERİ
+    let playCount = 0;
+    const MAX_PLAYS = 2;
+
+    function startQuiz() {
+        const nameInput = document.getElementById("student-name").value;
+        if(nameInput.trim() === "") { alert("Lütfen adınızı giriniz."); return; }
+        studentName = nameInput;
+        document.getElementById("login-screen").classList.add("hidden");
+        document.getElementById("quiz-content").classList.remove("hidden");
+        loadSection(0);
+    }
+
+    function loadSection(index) {
+        currentSectionIndex = index;
+        const data = quizData[index];
+        document.getElementById("progress-text").innerText = `Bölüm ${index + 1} / ${quizData.length}`;
+        
+        // --- SIFIRLAMA VE YENİ BÖLÜM AYARLARI ---
+        resetPlayer(); 
+        
+        // Dinleme Hakkı Sıfırlama
+        playCount = 0;
+        updateRightsDisplay();
+        document.getElementById("btn-play").classList.remove("disabled");
+
+        // Link Türü Kontrolü
+        if (data.mediaUrl.includes("youtube.com") || data.mediaUrl.includes("youtu.be")) {
+            isYoutube = true;
+            document.getElementById("native-player-container").innerHTML = ""; 
+
+            // ID Çıkarma (Shorts dahil)
+            let videoId = "";
+            if (data.mediaUrl.includes("/shorts/")) {
+                videoId = data.mediaUrl.split('/shorts/')[1].split('?')[0];
+            } else if (data.mediaUrl.includes("v=")) {
+                videoId = data.mediaUrl.split('v=')[1].split('&')[0];
+            } else if (data.mediaUrl.includes("youtu.be/")) {
+                videoId = data.mediaUrl.split('youtu.be/')[1].split('?')[0];
+            }
+
+            if (window.YT && window.YT.Player) {
+                ytPlayer = new YT.Player('yt-player', {
+                    height: '200', width: '200', videoId: videoId,
+                    playerVars: { 'playsinline': 1, 'controls': 0 },
+                    events: { 'onStateChange': onPlayerStateChange }
+                });
+            }
+        } else {
+            isYoutube = false;
+            const nativeContainer = document.getElementById("native-player-container");
+            nativeContainer.innerHTML = ""; 
+
+            let element;
+            if (data.mediaType === 'video') element = document.createElement('video');
+            else element = document.createElement('audio');
+            
+            element.id = "native-audio-element"; // ID veriyoruz ki seçebilelim
+            element.src = data.mediaUrl;
+            element.controls = false; // Native kontrolleri kapat, custom kullanacağız
+            element.setAttribute('controlsList', 'nodownload'); 
+            
+            // Native Hata Kontrolü
+            element.onerror = function() {
+                nativeContainer.innerHTML += `<p style='color:red; font-size:12px;'>⚠️ Hata: Dosya bulunamadı.</p>`;
+            };
+            
+            // Native Bitiş Kontrolü (Butonları sıfırla)
+            element.onended = function() {
+                showPlayBtn();
+                stopProgressLoop();
+            };
+
+            nativeContainer.appendChild(element);
+            element.load();
+        }
+
+        // Soruları Yükle
+        const qContainer = document.getElementById("section-questions-container");
+        qContainer.innerHTML = `<div class="section-title">${data.sectionTitle}</div>`;
+        data.questions.forEach((q, qIndex) => {
+            const qDiv = document.createElement("div");
+            qDiv.className = "question-box";
+            qDiv.innerHTML = `<div class="question-text">${q.q}</div>`;
+            const optDiv = document.createElement("div");
+            optDiv.className = "options";
+            q.options.forEach((opt, optIndex) => {
+                const btn = document.createElement("button");
+                btn.className = "btn";
+                btn.innerText = opt;
+                if (userAnswers[`${index}-${qIndex}`] === optIndex) btn.classList.add("selected-opt");
+                btn.onclick = () => selectOption(index, qIndex, optIndex, btn);
+                optDiv.appendChild(btn);
+            });
+            qDiv.appendChild(optDiv);
+            qContainer.appendChild(qDiv);
+        });
+
+        // Navigasyon Butonları
+        if (index === quizData.length - 1) {
+            document.getElementById("next-section-btn").classList.add("hidden");
+            document.getElementById("finish-exam-btn").classList.remove("hidden");
+        } else {
+            document.getElementById("next-section-btn").classList.remove("hidden");
+            document.getElementById("finish-exam-btn").classList.add("hidden");
+        }
+        window.scrollTo(0, 0);
+    }
+
+    // --- ORTAK KONTROL FONKSİYONLARI ---
+    
+    function updateRightsDisplay() {
+        document.getElementById("rights-display").innerText = `Kalan Dinleme Hakkı: ${MAX_PLAYS - playCount}`;
+    }
+
+    function checkAndIncrementPlayCount() {
+        // Bu fonksiyon sadece "Yeni Oynatma" (Start veya Restart) durumunda çağrılır
+        if (playCount >= MAX_PLAYS) {
+            alert("Bu bölümdeki dinleme hakkınız doldu! Soruları mevcut bilgilere göre cevaplayınız.");
+            document.getElementById("btn-play").classList.add("disabled");
+            return false;
+        }
+        playCount++;
+        updateRightsDisplay();
+        return true;
+    }
+
+    function handlePlay() {
+        // Yeni başlatma mı yoksa duraklatılan yerden devam mı?
+        let isNewStart = false;
+
+        if (isYoutube && ytPlayer) {
+            let state = ytPlayer.getPlayerState();
+            // -1: Unstarted, 5: Cued, 0: Ended
+            if (state === -1 || state === 5 || state === 0) isNewStart = true;
+        } else if (!isYoutube) {
+            let el = document.getElementById("native-audio-element");
+            if (el && (el.paused && el.currentTime === 0 || el.ended)) isNewStart = true;
+        }
+
+        // Eğer yeni başlangıçsa hakkı kontrol et ve düş
+        if (isNewStart) {
+            if (!checkAndIncrementPlayCount()) return; // Hak yoksa çık
+        }
+
+        // Oynat
+        if (isYoutube && ytPlayer) {
+            ytPlayer.playVideo();
+        } else {
+            let el = document.getElementById("native-audio-element");
+            if(el) el.play();
+        }
+
+        showPauseBtn();
+        startProgressLoop();
+    }
+
+    function handlePause() {
+        if (isYoutube && ytPlayer) {
+            ytPlayer.pauseVideo();
+        } else {
+            let el = document.getElementById("native-audio-element");
+            if(el) el.pause();
+        }
+        showPlayBtn();
+        stopProgressLoop();
+    }
+
+    // Arayüz Değişimleri
+    function showPlayBtn() {
+        document.getElementById("btn-play").style.display = "flex";
+        document.getElementById("btn-pause").style.display = "none";
+    }
+    function showPauseBtn() {
+        document.getElementById("btn-play").style.display = "none";
+        document.getElementById("btn-pause").style.display = "flex";
+    }
+
+    // YouTube Event Dinleyici
+    function onPlayerStateChange(event) {
+        if (event.data == YT.PlayerState.ENDED || event.data == YT.PlayerState.PAUSED) {
+            showPlayBtn();
+            stopProgressLoop();
+        }
+        if (event.data == YT.PlayerState.PLAYING) {
+            showPauseBtn();
+            startProgressLoop();
+        }
+    }
+
+    // İlerleme Çubuğu ve Süre
+    function startProgressLoop() {
+        stopProgressLoop();
+        progressInterval = setInterval(() => {
+            let current = 0, duration = 0;
+
+            if(isYoutube && ytPlayer && ytPlayer.getCurrentTime) {
+                current = ytPlayer.getCurrentTime();
+                duration = ytPlayer.getDuration();
+            } else if (!isYoutube) {
+                let el = document.getElementById("native-audio-element");
+                if(el) {
+                    current = el.currentTime;
+                    duration = el.duration;
+                }
+            }
+
+            if(duration > 0) {
+                const percent = (current / duration) * 100;
+                document.getElementById("progress-bar").style.width = percent + "%";
+                document.getElementById("time-display").innerText = formatTime(current) + " / " + formatTime(duration);
+            }
+        }, 500);
+    }
+
+    function stopProgressLoop() { if(progressInterval) clearInterval(progressInterval); }
+
+    function seekAudio(event) {
+        const container = document.querySelector(".progress-container");
+        const rect = container.getBoundingClientRect();
+        const clickX = event.clientX - rect.left;
+        const width = rect.width;
+        let duration = 0;
+
+        if (isYoutube && ytPlayer) duration = ytPlayer.getDuration();
+        else {
+            let el = document.getElementById("native-audio-element");
+            if(el) duration = el.duration;
+        }
+
+        if (duration > 0) {
+            const seekTime = (clickX / width) * duration;
+            if (isYoutube) ytPlayer.seekTo(seekTime, true);
+            else {
+                let el = document.getElementById("native-audio-element");
+                el.currentTime = seekTime;
+            }
+        }
+    }
+
+    function formatTime(seconds) {
+        const m = Math.floor(seconds / 60);
+        const s = Math.floor(seconds % 60);
+        return m + ":" + (s < 10 ? "0" + s : s);
+    }
+
+    function resetPlayer() {
+        stopProgressLoop();
+        if (ytPlayer) { try { ytPlayer.destroy(); } catch(e) {} ytPlayer = null; }
+        
+        document.getElementById("youtube-frame-wrapper").innerHTML = '<div id="yt-player"></div>';
+        document.getElementById("native-player-container").innerHTML = "";
+        
+        showPlayBtn();
+        document.getElementById("progress-bar").style.width = "0%";
+        document.getElementById("time-display").innerText = "0:00 / 0:00";
+    }
+
+    // --- GENEL ---
+    function selectOption(sectionIdx, qIdx, optIdx, btnElement) {
+        const parent = btnElement.parentElement;
+        const allBtns = parent.getElementsByClassName("btn");
+        for(let btn of allBtns) btn.classList.remove("selected-opt");
+        btnElement.classList.add("selected-opt");
+        userAnswers[`${sectionIdx}-${qIdx}`] = optIdx;
+    }
+
+    function nextSection() { loadSection(currentSectionIndex + 1); }
+
+    function finishExam() {
+        let totalCorrect = 0;
+        let totalQuestions = 0;
+        quizData.forEach((section, sIdx) => {
+            section.questions.forEach((q, qIdx) => {
+                totalQuestions++;
+                if (userAnswers[`${sIdx}-${qIdx}`] === q.answer) totalCorrect++;
+            });
+        });
+
+        document.getElementById("final-score").innerText = `${totalCorrect} / ${totalQuestions}`;
+        document.getElementById("result-msg").innerText = `Tebrikler ${studentName}, sınavı tamamladın.`;
+        document.getElementById("result-modal").style.display = "flex";
+        document.getElementById("quiz-content").classList.add("hidden");
+        sendDataToGoogle(studentName, totalCorrect);
+    }
+
+    function sendDataToGoogle(name, score) {
+        document.getElementById("loader").style.display = "block";
+        document.getElementById("google-response-msg").innerText = "Sonuçlar buluta kaydediliyor...";
+        const formData = new FormData();
+        formData.append('name', name);
+        formData.append('score', score);
+
+        fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: formData })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById("loader").style.display = "none";
+            if (data.result === "success") {
+                document.getElementById("google-response-msg").innerText = `✅ Kayıt Başarılı! (Sıralama: %${data.ranking})`;
+            } else {
+                document.getElementById("google-response-msg").innerText = "❌ Kayıt hatası.";
+            }
+        })
+        .catch(error => {
+            document.getElementById("loader").style.display = "none";
+            document.getElementById("google-response-msg").innerText = "✅ Sonuç kaydedildi."; 
+        });
+    }
+
+    function closeModal() {
+        document.getElementById("result-modal").style.display = "none";
+        location.reload(); 
+    }
+</script>
+
+</body>
+</html>
