@@ -18,7 +18,7 @@
 
         /* --- ORTAK OYNATICI ARAYÜZÜ --- */
         .player-interface {
-            display: block; /* Her zaman görünür (JS ile yönetilir) */
+            display: block;
         }
 
         .rights-info {
@@ -52,7 +52,7 @@
 
         /* Gizli Elemanlar */
         #youtube-frame-wrapper { position: absolute; top: -9999px; left: -9999px; width: 1px; height: 1px; visibility: hidden; pointer-events: none; }
-        #native-audio-element { display: none; } /* Native player gizli, custom arayüz yönetecek */
+        #native-audio-element { display: none; }
 
         /* Soru Alanları */
         .section-title { background-color: #2c3e50; color: white; padding: 10px; border-radius: 5px; margin-bottom: 20px; font-size: 18px; font-weight: bold; }
@@ -99,12 +99,12 @@
     <div class="media-control-panel">
         <div class="rights-info" id="rights-display">Kalan Dinleme Hakkı: 2</div>
         <p style="font-weight:bold; margin-bottom:15px; color:#555;">Dinleme Metni / Videosu</p>
-        
+
         <div class="player-interface">
             <div class="progress-container" onclick="seekAudio(event)">
                 <div class="progress-bar" id="progress-bar"></div>
             </div>
-            
+
             <div class="custom-player-controls">
                 <button class="ctrl-btn play" id="btn-play" onclick="handlePlay()">▶</button>
                 <button class="ctrl-btn pause" id="btn-pause" onclick="handlePause()">⏸</button>
@@ -140,8 +140,8 @@
     const quizData = [
         {
             sectionTitle: "Bölüm 1: Ekmek Taşı",
-            mediaUrl: "https://www.youtube.com/shorts/XOSgC_fXC98", 
-            mediaType: "audio", 
+            mediaUrl: "https://www.youtube.com/shorts/XOSgC_fXC98",
+            mediaType: "audio",
             questions: [
                 { q: "1. Bartın'da kaç tane ekmek taşı ustası vardır?", options: ["İki", "Üç", "Dört", "Beş"], answer: 3 },
                 { q: "2. Ekmek taşı çıkarmak isteyen bir kişi hangi coğrafi bölgeye gitmelidir?", options: ["Akdeniz", "Marmara", "Doğu Anadolu", "Karadeniz"], answer: 3 },
@@ -154,7 +154,7 @@
         {
             sectionTitle: "Bölüm 2: Mendiller neden kare şeklindedir?",
             mediaUrl: "https://www.youtube.com/watch?v=6rAk_nWefls",
-            mediaType: "audio", 
+            mediaType: "audio",
             questions: [
                 { q: "Mendiller ilk başta ne amaçla tasarlanmamıştı?", options: ["Burnumuzu sümkürmek için", "Statü göstergesi olarak kullanmak için", "Vedalaşırken sallamak için", "Masa örtüsü olarak kullanmak için"], answer: 1 },
                 { q: "Eski zamanlarda asiller burnu silme işini nasıl yapardı?", options: ["Kollarına sürerek", "Masa örtüsüne silerek", "Sadece ellerini kullanarak", "Zıplayarak"], answer: 3 },
@@ -165,28 +165,29 @@
             ]
         },
         {
-            sectionTitle: "Bölüm 3: Röportaj",
-            mediaUrl: "roportaj.mp3",
+            sectionTitle: "Bölüm 3: Serval Kedisi Simba",
+            mediaUrl: "https://www.youtube.com/watch?v=lTt-9XV0YzE",
             mediaType: "audio",
             questions: [
-                { q: "1. Konuşmacının mesleği nedir?", options: ["Doktor", "Mühendis", "Öğretmen", "Pilot"], answer: 2 },
-                { q: "2. Soru...", options: ["A", "B", "C", "D"], answer: 0 },
-                { q: "3. Soru...", options: ["A", "B", "C", "D"], answer: 0 },
-                { q: "4. Soru...", options: ["A", "B", "C", "D"], answer: 0 },
-                { q: "5. Soru...", options: ["A", "B", "C", "D"], answer: 0 },
-                { q: "6. Soru...", options: ["A", "B", "C", "D"], answer: 0 }
+                { q: "1. Serval kedisi nerede bir ev baskınında yakalanmıştır?", options: ["Çatalca", "Şişli", "Beşiktaş", "Kadıköy"], answer: 1 },
+                { q: "2. İnsanların çoğu bu hayvanı neye benzetmektedir?", options: ["Aslan", "Kaplan", "Leopar", "Vaşak"], answer: 2 },
+                { q: "3. Metinde bu hayvan neye benzetilmiştir?", options: ["Altın", "Elmas", "Yakut", "İnci"], answer: 1 },
+                { q: "4. Hayvanat bahçesinde Simba'ya hangi tıbbi müdahale yapılmıştır?", options: ["Kan tahlili", "Röntgen", "Diş tedavisi", "Göz ameliyatı"], answer: 2 },
+                { q: "5. Serval kedisi aslen Afrika'nın yerli bir kedi türüdür.", options: ["Doğru", "Yanlış"], answer: 0 },
+                { q: "6. Simba'nın bakımı için özel bir beslenme listesi hazırlanmıştır.", options: ["Doğru", "Yanlış"], answer: 0 },
+                { q: "7. Polis baskını sırasında evdeki kişi tutuklanmıştır.", options: ["Doğru", "Yanlış"], answer: 0 },
+                { q: "8. Serval kedisi normal kedilere hiç benzemeyen, hantal bir hayvandır.", options: ["Doğru", "Yanlış"], answer: 1 }
             ]
         }
     ];
 
     let currentSectionIndex = 0;
     let studentName = "";
-    let userAnswers = {}; 
-    let ytPlayer = null; 
+    let userAnswers = {};
+    let ytPlayer = null;
     let progressInterval = null;
     let isYoutube = false;
-    
-    // YENİ: DİNLEME HAKKI DEĞİŞKENLERİ
+
     let playCount = 0;
     const MAX_PLAYS = 2;
 
@@ -203,21 +204,17 @@
         currentSectionIndex = index;
         const data = quizData[index];
         document.getElementById("progress-text").innerText = `Bölüm ${index + 1} / ${quizData.length}`;
-        
-        // --- SIFIRLAMA VE YENİ BÖLÜM AYARLARI ---
-        resetPlayer(); 
-        
-        // Dinleme Hakkı Sıfırlama
+
+        resetPlayer();
+
         playCount = 0;
         updateRightsDisplay();
         document.getElementById("btn-play").classList.remove("disabled");
 
-        // Link Türü Kontrolü
         if (data.mediaUrl.includes("youtube.com") || data.mediaUrl.includes("youtu.be")) {
             isYoutube = true;
-            document.getElementById("native-player-container").innerHTML = ""; 
+            document.getElementById("native-player-container").innerHTML = "";
 
-            // ID Çıkarma (Shorts dahil)
             let videoId = "";
             if (data.mediaUrl.includes("/shorts/")) {
                 videoId = data.mediaUrl.split('/shorts/')[1].split('?')[0];
@@ -237,23 +234,21 @@
         } else {
             isYoutube = false;
             const nativeContainer = document.getElementById("native-player-container");
-            nativeContainer.innerHTML = ""; 
+            nativeContainer.innerHTML = "";
 
             let element;
             if (data.mediaType === 'video') element = document.createElement('video');
             else element = document.createElement('audio');
-            
-            element.id = "native-audio-element"; // ID veriyoruz ki seçebilelim
+
+            element.id = "native-audio-element";
             element.src = data.mediaUrl;
-            element.controls = false; // Native kontrolleri kapat, custom kullanacağız
-            element.setAttribute('controlsList', 'nodownload'); 
-            
-            // Native Hata Kontrolü
+            element.controls = false;
+            element.setAttribute('controlsList', 'nodownload');
+
             element.onerror = function() {
                 nativeContainer.innerHTML += `<p style='color:red; font-size:12px;'>⚠️ Hata: Dosya bulunamadı.</p>`;
             };
-            
-            // Native Bitiş Kontrolü (Butonları sıfırla)
+
             element.onended = function() {
                 showPlayBtn();
                 stopProgressLoop();
@@ -263,7 +258,6 @@
             element.load();
         }
 
-        // Soruları Yükle
         const qContainer = document.getElementById("section-questions-container");
         qContainer.innerHTML = `<div class="section-title">${data.sectionTitle}</div>`;
         data.questions.forEach((q, qIndex) => {
@@ -284,7 +278,6 @@
             qContainer.appendChild(qDiv);
         });
 
-        // Navigasyon Butonları
         if (index === quizData.length - 1) {
             document.getElementById("next-section-btn").classList.add("hidden");
             document.getElementById("finish-exam-btn").classList.remove("hidden");
@@ -295,14 +288,11 @@
         window.scrollTo(0, 0);
     }
 
-    // --- ORTAK KONTROL FONKSİYONLARI ---
-    
     function updateRightsDisplay() {
         document.getElementById("rights-display").innerText = `Kalan Dinleme Hakkı: ${MAX_PLAYS - playCount}`;
     }
 
     function checkAndIncrementPlayCount() {
-        // Bu fonksiyon sadece "Yeni Oynatma" (Start veya Restart) durumunda çağrılır
         if (playCount >= MAX_PLAYS) {
             alert("Bu bölümdeki dinleme hakkınız doldu! Soruları mevcut bilgilere göre cevaplayınız.");
             document.getElementById("btn-play").classList.add("disabled");
@@ -314,24 +304,20 @@
     }
 
     function handlePlay() {
-        // Yeni başlatma mı yoksa duraklatılan yerden devam mı?
         let isNewStart = false;
 
         if (isYoutube && ytPlayer) {
             let state = ytPlayer.getPlayerState();
-            // -1: Unstarted, 5: Cued, 0: Ended
             if (state === -1 || state === 5 || state === 0) isNewStart = true;
         } else if (!isYoutube) {
             let el = document.getElementById("native-audio-element");
             if (el && (el.paused && el.currentTime === 0 || el.ended)) isNewStart = true;
         }
 
-        // Eğer yeni başlangıçsa hakkı kontrol et ve düş
         if (isNewStart) {
-            if (!checkAndIncrementPlayCount()) return; // Hak yoksa çık
+            if (!checkAndIncrementPlayCount()) return;
         }
 
-        // Oynat
         if (isYoutube && ytPlayer) {
             ytPlayer.playVideo();
         } else {
@@ -354,7 +340,6 @@
         stopProgressLoop();
     }
 
-    // Arayüz Değişimleri
     function showPlayBtn() {
         document.getElementById("btn-play").style.display = "flex";
         document.getElementById("btn-pause").style.display = "none";
@@ -364,7 +349,6 @@
         document.getElementById("btn-pause").style.display = "flex";
     }
 
-    // YouTube Event Dinleyici
     function onPlayerStateChange(event) {
         if (event.data == YT.PlayerState.ENDED || event.data == YT.PlayerState.PAUSED) {
             showPlayBtn();
@@ -376,7 +360,6 @@
         }
     }
 
-    // İlerleme Çubuğu ve Süre
     function startProgressLoop() {
         stopProgressLoop();
         progressInterval = setInterval(() => {
@@ -435,16 +418,15 @@
     function resetPlayer() {
         stopProgressLoop();
         if (ytPlayer) { try { ytPlayer.destroy(); } catch(e) {} ytPlayer = null; }
-        
+
         document.getElementById("youtube-frame-wrapper").innerHTML = '<div id="yt-player"></div>';
         document.getElementById("native-player-container").innerHTML = "";
-        
+
         showPlayBtn();
         document.getElementById("progress-bar").style.width = "0%";
         document.getElementById("time-display").innerText = "0:00 / 0:00";
     }
 
-    // --- GENEL ---
     function selectOption(sectionIdx, qIdx, optIdx, btnElement) {
         const parent = btnElement.parentElement;
         const allBtns = parent.getElementsByClassName("btn");
@@ -491,13 +473,13 @@
         })
         .catch(error => {
             document.getElementById("loader").style.display = "none";
-            document.getElementById("google-response-msg").innerText = "✅ Sonuç kaydedildi."; 
+            document.getElementById("google-response-msg").innerText = "✅ Sonuç kaydedildi.";
         });
     }
 
     function closeModal() {
         document.getElementById("result-modal").style.display = "none";
-        location.reload(); 
+        location.reload();
     }
 </script>
 
